@@ -84,33 +84,15 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- PostgreSQL -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>../src/main/resources</directory>
-                <includes>
-                    <include>**/*.properties</include>
-                    <include>**/*.yml</include>
-                    <include>**/*.sql</include> <!-- Важно для schema.sql -->
-                </includes>
-            </resource>
-        </resources>
-
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Плагин для Lombok -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
