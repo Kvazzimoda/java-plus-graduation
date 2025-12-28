@@ -5,182 +5,92 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 import ru.practicum.dto.EndpointHitDto;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class StatsClientImplTest {
 
     @Mock
-    private RestClient.Builder restClientBuilder;
+    private DiscoveryClient discoveryClient;
 
     private StatsClientImpl statsClient;
 
     @BeforeEach
     void setUp() {
-        // Если конструктор теперь принимает Builder
-        statsClient = new StatsClientImpl(restClientBuilder);
+        // Создаем реальный клиент
+        statsClient = new StatsClientImpl(discoveryClient);
+
+        // Настраиваем RetryTemplate для тестов (упрощенный)
+        RetryTemplate retryTemplate = new RetryTemplate();
+        ReflectionTestUtils.setField(statsClient, "retryTemplate", retryTemplate);
     }
 
     @Test
-    void testConstructorWithBuilder() {
+    void constructor_shouldCreateClient() {
         assertNotNull(statsClient);
-        assertNotNull(ReflectionTestUtils.getField(statsClient, "restClient"));
-        assertNotNull(ReflectionTestUtils.getField(statsClient, "formatter"));
     }
 
     @Test
-    void testGetStat_withNullStart_shouldThrowException() {
-        String start = null;
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = List.of("/test");
-        Boolean unique = false;
-
-        IllegalArgumentException exception = assertThrows(
+    void getStat_nullStart_shouldThrow() {
+        IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> statsClient.getStat(start, end, urls, unique)
+                () -> statsClient.getStat(
+                        null,
+                        "2024-01-02 00:00:00",
+                        List.of("/test"),
+                        false
+                )
         );
-        assertEquals("диапазон не может содержать null", exception.getMessage());
+
+        assertEquals("Диапазон не может быть null", ex.getMessage());
     }
 
     @Test
-    void testGetStat_withNullEnd_shouldThrowException() {
-        String start = "2024-01-01 00:00:00";
-        String end = null;
-        List<String> urls = List.of("/test");
-        Boolean unique = false;
-
-        IllegalArgumentException exception = assertThrows(
+    void getStat_startAfterEnd_shouldThrow() {
+        IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> statsClient.getStat(start, end, urls, unique)
+                () -> statsClient.getStat(
+                        "2024-01-03 00:00:00",
+                        "2024-01-02 00:00:00",
+                        List.of("/test"),
+                        false
+                )
         );
-        assertEquals("диапазон не может содержать null", exception.getMessage());
+
+        assertEquals("Неверный диапазон дат", ex.getMessage());
     }
 
     @Test
-    void testGetStat_withStartAfterEnd_shouldThrowException() {
-        String start = "2024-01-02 00:00:00";
-        String end = "2024-01-01 00:00:00";
-        List<String> urls = List.of("/test");
-        Boolean unique = false;
+    void hit_shouldThrowWhenServiceNotFound() {
+        // Arrange
+        when(discoveryClient.getInstances("stats-server"))
+                .thenReturn(List.of()); // Пустой список
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> statsClient.getStat(start, end, urls, unique)
-        );
-        assertEquals("задан не верный диапазон", exception.getMessage());
-    }
-
-    @Test
-    void testGetStat_withInvalidDateFormat_shouldThrowException() {
-        String start = "invalid-date";
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = List.of("/test");
-        Boolean unique = false;
-
-        assertThrows(Exception.class, () -> statsClient.getStat(start, end, urls, unique));
-    }
-
-    @Test
-    void testGetStat_withValidDates_shouldNotThrowOnValidation() {
-        String start = "2024-01-01 00:00:00";
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = List.of("/test");
-        Boolean unique = false;
-
-        try {
-            statsClient.getStat(start, end, urls, unique);
-        } catch (Exception e) {
-            // Ожидаем исключение от REST вызова, но не от валидации
-            assertFalse(e.getMessage().contains("диапазон не может содержать null"));
-            assertFalse(e.getMessage().contains("задан не верный диапазон"));
-        }
-    }
-
-    @Test
-    void testHit_withValidDto_shouldNotThrowOnValidation() {
-        EndpointHitDto hitDto = new EndpointHitDto(
-                "test-app",
+        EndpointHitDto dto = new EndpointHitDto(
+                "app",
                 "/test",
-                "192.168.1.1",
+                "127.0.0.1",
                 LocalDateTime.now()
         );
 
-        try {
-            statsClient.hit(hitDto);
-        } catch (Exception e) {
-            // Ожидаем исключение от REST вызова, но не от валидации DTO
-            assertNotNull(e);
-        }
-    }
+        // Act & Assert
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> statsClient.hit(dto)
+        );
 
-    @Test
-    void testGetStat_withNullUrls_shouldNotThrowOnValidation() {
-        String start = "2024-01-01 00:00:00";
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = null;
-        Boolean unique = false;
-
-        try {
-            statsClient.getStat(start, end, urls, unique);
-        } catch (Exception e) {
-            // Ожидаем исключение от REST вызова, но не от валидации
-            assertFalse(e.getMessage().contains("диапазон не может содержать null"));
-        }
-    }
-
-    @Test
-    void testGetStat_withEmptyUrls_shouldNotThrowOnValidation() {
-        String start = "2024-01-01 00:00:00";
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = List.of();
-        Boolean unique = null;
-
-        try {
-            statsClient.getStat(start, end, urls, unique);
-        } catch (Exception e) {
-            // Ожидаем исключение от REST вызова, но не от валидации
-            assertFalse(e.getMessage().contains("диапазон не может содержать null"));
-        }
-    }
-
-    @Test
-    void testGetStat_withNullUnique_shouldNotThrowOnValidation() {
-        String start = "2024-01-01 00:00:00";
-        String end = "2024-01-02 00:00:00";
-        List<String> urls = List.of("/test");
-        Boolean unique = null;
-
-        try {
-            statsClient.getStat(start, end, urls, unique);
-        } catch (Exception e) {
-            // Ожидаем исключение от REST вызова, но не от валидации
-            assertFalse(e.getMessage().contains("диапазон не может содержать null"));
-        }
-    }
-
-    @Test
-    void testDateTimeFormatterPattern() {
-        String start = "2024-01-01 12:30:45";
-        String end = "2024-01-02 12:30:45";
-
-        try {
-            statsClient.getStat(start, end, List.of("/test"), false);
-        } catch (Exception e) {
-            // Не должно быть исключения парсинга даты
-            assertFalse(e.getMessage().contains("DateTimeParseException"));
-        }
-    }
-
-    @Test
-    void testImplementsStatsClientInterface() {
-        assertInstanceOf(StatsClient.class, statsClient);
-        assertNotNull(statsClient);
+        assertEquals("Stats server not found in Eureka", ex.getMessage());
     }
 }

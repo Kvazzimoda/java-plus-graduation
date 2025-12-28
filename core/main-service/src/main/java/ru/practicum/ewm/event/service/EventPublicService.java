@@ -97,6 +97,8 @@ public class EventPublicService {
                     .collect(Collectors.toList());
         }
 
+        saveStats(ip, uri);
+
         // Получение статистики просмотров
         List<EventShortDto> eventDtos = convertToEventShortDtoList(events);
 
@@ -105,8 +107,6 @@ public class EventPublicService {
             eventDtos.sort(Comparator.comparing(EventShortDto::getViews,
                     Comparator.nullsLast(Comparator.naturalOrder())));
         }
-
-        saveStats(ip, uri);
 
         log.info("Найдено {} событий", eventDtos.size());
         return eventDtos;
@@ -117,6 +117,9 @@ public class EventPublicService {
 
         Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Событие с ID " + eventId + " не найдено"));
+
+        event.setViews(event.getViews() + 1);
+        eventRepository.save(event);
 
         EventFullDto eventDto = convertToEventFullDto(event);
 

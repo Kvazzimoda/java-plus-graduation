@@ -2,22 +2,53 @@ server:
   port: 8080
 
 spring:
+  application:
+    name: gateway
+
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
+      routes:
+        # ================== MAIN SERVICE ==================
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    prefer-ip-address: true
+        - id: main-admin
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=/admin/**
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,gateway
+        - id: main-private
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=/users/**
+
+        - id: main-public
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=
+              /categories,
+              /categories/**,
+              /events,
+              /events/**,
+              /compilations,
+              /compilations/**,
+              /events/*/comments,
+              /events/*/comments/**
+
+        # ================== STATS SERVICE ==================
+
+        - id: stats
+          uri: lb://STATS-SERVER
+          predicates:
+            - Path=/hit, /stats
+
+
+# ЛОГИРОВАНИЕ (для отладки)
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG     # ← ВАЖНО для отладки маршрутов
+    reactor.netty.http.client: DEBUG
+    org.springframework.web.reactive: DEBUG
+    com.netflix.eureka: DEBUG
+    org.springframework.cloud.commons: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

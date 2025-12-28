@@ -81,4 +81,8 @@ public class Event {
     @Size(min = 3, max = 120, message = "Заголовок должен содержать от 3 до 120 символов")
     @Column(name = "title", nullable = false, length = 120)
     private String title;
+
+    @Column(name = "views")
+    @Builder.Default
+    private Long views = 0L;
 }
