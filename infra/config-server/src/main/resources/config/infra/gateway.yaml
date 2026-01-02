@@ -13,44 +13,25 @@ spring:
           lower-case-service-id: true
 
       routes:
-        # ================== MAIN SERVICE ==================
-
         - id: main-admin
-          uri: lb://MAIN-SERVICE
+          uri: lb://main-service
           predicates:
             - Path=/admin/**
 
         - id: main-private
-          uri: lb://MAIN-SERVICE
+          uri: lb://main-service
           predicates:
             - Path=/users/**
 
         - id: main-public
-          uri: lb://MAIN-SERVICE
+          uri: lb://main-service
           predicates:
-            - Path=
-              /categories,
-              /categories/**,
-              /events,
-              /events/**,
-              /compilations,
-              /compilations/**,
-              /events/*/comments,
-              /events/*/comments/**
-
-        # ================== STATS SERVICE ==================
+            - Path=/categories/**,/events/**,/compilations/**,/events/*/comments/**
 
         - id: stats
-          uri: lb://STATS-SERVICE
+          uri: lb://stats-service
           predicates:
-            - Path=/hit, /stats
-
-
-        # Роут для actuator (мониторинг)
-        - id: actuator_route
-          uri: lb://gateway
-          predicates:
-            - Path=/actuator/**
+            - Path=/hit,/stats
 
 # Настройки Eureka
 eureka:
@@ -72,8 +53,6 @@ management:
       exposure:
         include: "*"
   endpoint:
-    health:
-      show-details: always
     gateway:
       enabled: true
 
