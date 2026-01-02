@@ -51,9 +51,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info,metrics,gateway,routes  # <-- добавить routes
+      base-path: /actuator  # <-- явно указать base-path
+    enabled-by-default: true  # <-- важно для Spring Boot 3.x!
   endpoint:
+    health:
+      show-details: always
     gateway:
+      enabled: true
+    routes:  # <-- добавить этот endpoint отдельно!
       enabled: true
 
 # Логирование

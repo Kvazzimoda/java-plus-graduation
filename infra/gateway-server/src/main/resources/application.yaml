@@ -1,6 +1,6 @@
 spring:
   application:
-    name: gateway
+    name: gateway-server
   config:
     import: "configserver:"
   cloud:
@@ -22,3 +22,27 @@ eureka:
     hostname: localhost
     instance-id: "${spring.application.name}:${random.value}"
     leaseRenewalIntervalInSeconds: 10
+
+# АКТИВИРУЕМ ACTUATOR ЛОКАЛЬНО!
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,routes,metrics,env
+      base-path: /actuator
+    enabled-by-default: true
+  endpoint:
+    gateway:
+      enabled: true
+    routes:
+      enabled: true
+    health:
+      enabled: true
+      show-details: always
+
+# Логирование для диагностики
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
+    org.springframework.boot.actuate: DEBUG
+    org.springframework.cloud.gateway: DEBUG
