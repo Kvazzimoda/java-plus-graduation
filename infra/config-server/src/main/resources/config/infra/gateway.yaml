@@ -3,10 +3,15 @@ server:
 
 spring:
   application:
-    name: gateway
-
+    name: gateway-server
   cloud:
     gateway:
+      # Автоматическое обнаружение сервисов через Eureka
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
       routes:
         # ================== MAIN SERVICE ==================
 
@@ -36,19 +41,44 @@ spring:
         # ================== STATS SERVICE ==================
 
         - id: stats
-          uri: lb://STATS-SERVER
+          uri: lb://STATS-SERVICE
           predicates:
             - Path=/hit, /stats
 
 
-# ЛОГИРОВАНИЕ (для отладки)
+        # Роут для actuator (мониторинг)
+        - id: actuator_route
+          uri: lb://gateway
+          predicates:
+            - Path=/actuator/**
+
+# Настройки Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    healthcheck:
+      enabled: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# Мониторинг и метрики
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Логирование
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG     # ← ВАЖНО для отладки маршрутов
-    reactor.netty.http.client: DEBUG
-    org.springframework.web.reactive: DEBUG
-    com.netflix.eureka: DEBUG
-    org.springframework.cloud.commons: DEBUG
-
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG

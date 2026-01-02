@@ -121,9 +121,9 @@ public class EventPublicService {
         event.setViews(event.getViews() + 1);
         eventRepository.save(event);
 
-        EventFullDto eventDto = convertToEventFullDto(event);
-
         saveStats(ip, uri);
+
+        EventFullDto eventDto = convertToEventFullDto(event);
 
         log.info("Событие с ID {} найдено", eventId);
         return eventDto;
@@ -191,7 +191,7 @@ public class EventPublicService {
                     start.format(FORMATTER),
                     end.format(FORMATTER),
                     uris,
-                    true
+                    false
             );
 
             return stats.stream()
@@ -244,17 +244,18 @@ public class EventPublicService {
 
     private void saveStats(String ip, String uri) {
         try {
+            String cleanUri = uri.split("\\?")[0];
+
             EndpointHitDto hitDto = new EndpointHitDto(
                     "ewm-main-service",
-                    uri,
+                    cleanUri,
                     ip,
                     LocalDateTime.now()
             );
 
             statsClient.hit(hitDto);
-            log.debug("Статистика сохранена: ip={}, uri={}", ip, uri);
         } catch (Exception e) {
-            log.warn("Ошибка при сохранении статистики: {}", e.getMessage());
+            log.warn("Ошибка при сохранении статистики", e);
         }
     }
 }
