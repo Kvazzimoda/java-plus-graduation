@@ -188,14 +188,14 @@ public class EventPublicService {
                     .map(id -> "/events/" + id)
                     .toList();
 
-            LocalDateTime start = LocalDateTime.of(1970, 1, 1, 0, 0);
             LocalDateTime end = LocalDateTime.now();
+            LocalDateTime start = end.minusMinutes(1);
 
             ResponseEntity<Object> response = statsClient.getStats(
                     start,
                     end,
                     uris,
-                    false
+                    true
             );
 
             if (response.getBody() == null) {
