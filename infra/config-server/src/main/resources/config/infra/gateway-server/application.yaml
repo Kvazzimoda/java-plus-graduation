@@ -1,17 +1,9 @@
 server:
   port: 8080
-
 spring:
-  application:
-    name: gateway-server
   cloud:
     gateway:
-      # Автоматическое обнаружение сервисов через Eureka
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-
+      discovery.locator.enabled: true
       routes:
         - id: main-admin
           uri: lb://main-service
@@ -51,19 +43,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,gateway,routes  # <-- добавить routes
-      base-path: /actuator  # <-- явно указать base-path
-    enabled-by-default: true  # <-- важно для Spring Boot 3.x!
+        include: health,info,metrics,gateway
   endpoint:
     health:
       show-details: always
     gateway:
       enabled: true
-    routes:  # <-- добавить этот endpoint отдельно!
-      enabled: true
 
 # Логирование
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.web: DEBUG
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: WARN
+    ru.practicum.gateway: DEBUG

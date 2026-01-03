@@ -5,44 +5,21 @@ spring:
     import: "configserver:"
   cloud:
     config:
+      discovery:
+        enabled: true
+        serviceId: config-server
       fail-fast: true
       retry:
         useRandomPolicy: true
         max-interval: 6000
-      discovery:
-        enabled: true
-        serviceId: config-server
+
 
 eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/
-  instance:
-    preferIpAddress: true
-    hostname: localhost
-    instance-id: "${spring.application.name}:${random.value}"
-    leaseRenewalIntervalInSeconds: 10
-
-# АКТИВИРУЕМ ACTUATOR ЛОКАЛЬНО!
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway,routes,metrics,env
-      base-path: /actuator
-    enabled-by-default: true
-  endpoint:
-    gateway:
-      enabled: true
-    routes:
-      enabled: true
-    health:
-      enabled: true
-      show-details: always
-
-# Логирование для диагностики
-logging:
-  level:
-    org.springframework.cloud.config: DEBUG
-    org.springframework.boot.actuate: DEBUG
-    org.springframework.cloud.gateway: DEBUG
+    instance:
+      preferIpAddress: true
+      hostname: localhost
+      instance-id: "${spring.application.name}:${random.value}"
+      leaseRenewalIntervalInSeconds: 10

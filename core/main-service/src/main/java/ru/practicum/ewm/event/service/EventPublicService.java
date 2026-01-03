@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.client.StatsClient;
@@ -177,31 +178,51 @@ public class EventPublicService {
     }
 
     private Map<Long, Long> getViewsMap(List<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Map.of();
+        }
+
         try {
-            // Формирование списка URI для запроса статистики
+            // URI событий
             List<String> uris = eventIds.stream()
                     .map(id -> "/events/" + id)
-                    .collect(Collectors.toList());
+                    .toList();
 
-            // Запрос статистики с начала времени до текущего момента
-            LocalDateTime start = LocalDateTime.of(1970, 1, 1, 0, 0, 0);
+            LocalDateTime start = LocalDateTime.of(1970, 1, 1, 0, 0);
             LocalDateTime end = LocalDateTime.now();
 
-            Collection<ViewStats> stats = statsClient.getStat(
-                    start.format(FORMATTER),
-                    end.format(FORMATTER),
+            ResponseEntity<Object> response = statsClient.getStats(
+                    start,
+                    end,
                     uris,
                     false
             );
 
-            return stats.stream()
+            if (response.getBody() == null) {
+                return Map.of();
+            }
+
+            // Feign/Jackson возвращает List<Map<...>>
+            List<?> rawStats = (List<?>) response.getBody();
+
+            return rawStats.stream()
+                    .map(stat -> {
+                        Map<?, ?> map = (Map<?, ?>) stat;
+                        String uri = (String) map.get("uri");
+                        Integer hits = (Integer) map.get("hits");
+
+                        Long eventId = extractEventIdFromUri(uri);
+                        return Map.entry(eventId, hits.longValue());
+                    })
+                    .filter(entry -> entry.getKey() != null)
                     .collect(Collectors.toMap(
-                            stat -> extractEventIdFromUri(stat.getUri()),
-                            ViewStats::getHits,
-                            (existing, replacement) -> existing
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            Long::sum
                     ));
+
         } catch (Exception e) {
-            log.warn("Ошибка при получении статистики просмотров: {}", e.getMessage());
+            log.warn("Ошибка при получении статистики просмотров", e);
             return Map.of();
         }
     }
@@ -253,7 +274,7 @@ public class EventPublicService {
                     LocalDateTime.now()
             );
 
-            statsClient.hit(hitDto);
+            statsClient.addHit(hitDto);
         } catch (Exception e) {
             log.warn("Ошибка при сохранении статистики", e);
         }
