@@ -1,6 +1,7 @@
 package ru.practicum.ewm.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,6 +18,18 @@ import java.time.format.DateTimeFormatter;
 public class GlobalExceptionHandler {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleConstraintViolationException(ConstraintViolationException e) {
+        log.error("Ошибка валидации параметров: {}", e.getMessage());
+        return new ErrorResponse(
+                "BAD_REQUEST",
+                "Некорректный запрос",
+                e.getMessage(),
+                LocalDateTime.now().format(FORMATTER)
+        );
+    }
 
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
