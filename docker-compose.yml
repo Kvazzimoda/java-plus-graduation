@@ -1,14 +1,38 @@
-services:
-  stats-server:
-    ports:
-      - "9090:9090"
+version: '3.9'
 
+services:
+  # Stats DB
   stats-db:
     image: postgres:16.1
-
-  ewm-service:
+    container_name: stats-db
+    environment:
+      POSTGRES_DB: stats
+      POSTGRES_USER: stats
+      POSTGRES_PASSWORD: stats
     ports:
-      - "8080:8080"
+      - "5432:5432"
+    volumes:
+      - ./stats-server/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stats -d stats"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  ewm-db:
+  # Main DB
+  main-db:
     image: postgres:16.1
+    container_name: main-db
+    environment:
+      POSTGRES_DB: ewm
+      POSTGRES_USER: ewm
+      POSTGRES_PASSWORD: ewm
+    ports:
+      - "6542:5432"
+    volumes:
+      - ./main-service/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewm -d ewm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

@@ -1,0 +1,59 @@
+server:
+  port: 8080
+spring:
+  cloud:
+    gateway:
+      discovery.locator.enabled: true
+      routes:
+        - id: main-admin
+          uri: lb://main-service
+          predicates:
+            - Path=/admin/**
+
+        - id: main-private
+          uri: lb://main-service
+          predicates:
+            - Path=/users/**
+
+        - id: main-public
+          uri: lb://main-service
+          predicates:
+            - Path=/categories/**,/events/**,/compilations/**,/events/*/comments/**
+
+        - id: stats
+          uri: lb://stats-service
+          predicates:
+            - Path=/hit,/stats
+
+# Настройки Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    healthcheck:
+      enabled: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# Мониторинг и метрики
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Логирование
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: WARN
+    ru.practicum.gateway: DEBUG

@@ -1,0 +1,186 @@
+{
+  "info": {
+    "name": "EWM Comments API Tests",
+    "_postman_id": "ewm-comments-api-tests",
+    "description": "Набор тестов для проверки API комментариев",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "userId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "eventId", "value": "" },
+    { "key": "commentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Public Comments",
+      "item": [
+        {
+          "name": "Get Event Comments - Event Not Found",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/events/99999/comments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test(\"Status code is 404\", () => pm.response.to.have.status(404));",
+                "pm.test(\"Error response is JSON\", () => pm.response.to.be.json);"
+              ]}
+            }
+          ]
+        },
+        {
+          "name": "Get Event Comments - Success",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/events/{{eventId}}/comments"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": [
+                "// Создать пользователя",
+                "let newUser = { name: 'Test User', email: `test_${Date.now()}@mail.com` };",
+                "pm.sendRequest({ url: `${pm.variables.get('baseUrl')}/admin/users`, method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify(newUser) } }, (err, res) => {",
+                "  let user = res.json();",
+                "  pm.collectionVariables.set('userId', user.id);",
+                "  // Создать категорию",
+                "  let category = { name: 'Test Category' };",
+                "  pm.sendRequest({ url: `${pm.variables.get('baseUrl')}/admin/categories`, method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify(category) } }, (err2, res2) => {",
+                "    let cat = res2.json();",
+                "    pm.collectionVariables.set('categoryId', cat.id);",
+                "    // Создать событие",
+                "    let start = new Date(Date.now() + 3 * 3600000).toISOString().replace('T',' ').substring(0,19);",
+                "    let event = { annotation: 'Test annotation for event success', category: cat.id, description: 'Long enough description for event creation', eventDate: start, location: { lat: 0.0, lon: 0.0 }, paid: false, participantLimit: 0, requestModeration: false, title: 'Test Event Title' };",
+                "    pm.sendRequest({ url: `${pm.variables.get('baseUrl')}/users/${user.id}/events`, method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify(event) } }, (err3, res3) => {",
+                "      let ev = res3.json();",
+                "      pm.collectionVariables.set('eventId', ev.id);",
+                "      // Опубликовать событие",
+                "      pm.sendRequest({ url: `${pm.variables.get('baseUrl')}/admin/events/${ev.id}`, method: 'PATCH', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: '{\"stateAction\":\"PUBLISH_EVENT\"}' } }, () => {",
+                "        // Создать комментарий",
+                "        let comment = { text: 'This is a public comment for testing' };",
+                "        pm.sendRequest({ url: `${pm.variables.get('baseUrl')}/users/${user.id}/comments/events/${ev.id}`, method: 'POST', header: { 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: JSON.stringify(comment) } }, (err4, res4) => {",
+                "          let com = res4.json();",
+                "          pm.collectionVariables.set('commentId', com.id);",
+                "        });",
+                "      });",
+                "    });",
+                "  });",
+                "});"
+              ]}
+            },
+            {
+              "listen": "test",
+              "script": { "exec": [
+                "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                "pm.test('Response is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+              ]}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Private Comments",
+      "item": [
+        {
+          "name": "Create Comment - Invalid Text",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{ \"text\": \"\" }" },
+            "url": "{{baseUrl}}/users/{{userId}}/comments/events/{{eventId}}"
+          },
+          "event": [ { "listen": "test", "script": { "exec": [
+            "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+            "pm.test(\"Validation error is JSON\", () => pm.response.to.be.json);"
+          ]}} ]
+        },
+        {
+          "name": "Create Comment - Success",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{ \"text\": \"Отличное мероприятие!\" }" },
+            "url": "{{baseUrl}}/users/{{userId}}/comments/events/{{eventId}}"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": [ "// данные уже созданы на шаге выше" ] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Response contains comment ID\", () => pm.expect(pm.response.json()).to.have.property('id'));"
+            ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin Comments",
+      "item": [
+        {
+          "name": "Get All Comments - Success",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/comments?from=0&size=10" },
+          "event": [ { "listen": "test", "script": { "exec": [
+            "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+            "pm.test(\"Response is array\", () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ] } } ]
+        },
+        {
+          "name": "Get Comment by ID - Success",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/comments/{{commentId}}" },
+          "event": [ { "listen": "test", "script": { "exec": [
+            "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+            "pm.test(\"Response contains comment ID\", () => pm.expect(pm.response.json()).to.have.property('id'));"
+          ] } } ]
+        },
+        {
+          "name": "Delete Comment by Admin - Success",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/comments/{{commentId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Comment by ID - Not Found",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/comments/99999" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error response is JSON\", () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Comment by Admin - Not Found",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/comments/99999" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error response is JSON\", () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
