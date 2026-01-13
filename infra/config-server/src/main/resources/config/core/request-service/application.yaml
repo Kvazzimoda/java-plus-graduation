@@ -1,0 +1,71 @@
+server:
+  port: 0
+
+spring:
+  sql:
+    init:
+      mode: always
+  #DB connection
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/core_request_service
+    username: postgres
+    password: root
+    initialization-mode: always
+  jpa:
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: true
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        initial-interval: 3000
+        max-attempts: 10
+        max-interval: 10000
+
+logging:
+  level:
+    ru:
+      practicum: TRACE
+    org:
+      springframework:
+        orm:
+          jpa: DEBUG
+        transaction: DEBUG
+  root: INFO
+
+# Общая настройка для Feign Circuit Breaker
+feign:
+  circuitbreaker:
+    enabled: true
+
+# Resilience4j Circuit Breaker конфигурация
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 50
+        failure-rate-threshold: 50
+    instances:
+      user-service:
+        sliding-window-size: 30
+        wait-duration-in-open-state: 10000
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 7
+        automatic-transition-from-open-to-half-open-enabled: true
+      event-service:
+        sliding-window-size: 30
+        wait-duration-in-open-state: 10000
+        permitted-number-of-calls-in-half-open-state: 3
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 7
+        automatic-transition-from-open-to-half-open-enabled: true
