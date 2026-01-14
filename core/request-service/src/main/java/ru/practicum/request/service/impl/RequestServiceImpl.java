@@ -82,7 +82,13 @@ public class RequestServiceImpl implements RequestService {
         if (event.getParticipantLimit() == 0) {
             request.setStatus(Request.RequestStatus.CONFIRMED);
         }
-        collectorClient.sendUserAction(createUserAction(eventId, userId, ActionTypeProto.ACTION_REGISTER));
+        try {
+            collectorClient.sendUserAction(
+                    createUserAction(eventId, userId, ActionTypeProto.ACTION_REGISTER)
+            );
+        } catch (Exception e) {
+            log.warn("Не удалось отправить статистику, продолжаем без неё", e);
+        }
         return RequestMapper.toParticipationRequestDto(requestRepository.save(request));
     }
 
