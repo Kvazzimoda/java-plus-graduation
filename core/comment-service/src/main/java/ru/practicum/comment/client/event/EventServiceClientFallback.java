@@ -1,0 +1,17 @@
+package ru.practicum.comment.client.event;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import ru.practicum.core.dto.EventDto;
+import ru.practicum.core.client.EventClient;
+
+@Slf4j
+@Component
+public class EventServiceClientFallback implements EventClient {
+
+    @Override
+    public EventDto getEventById(Long eventId) {
+        log.error("Failed to get event with id={} from event-service", eventId);
+        throw new RuntimeException("Event service is unavailable");
+    }
+}

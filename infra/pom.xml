@@ -10,11 +10,10 @@
     </parent>
 
     <artifactId>infra</artifactId>
-    <packaging>pom</packaging>
     <modules>
-        <module>gateway-server</module>
-        <module>discovery-server</module>
         <module>config-server</module>
+        <module>discovery-server</module>
+        <module>gateway-server</module>
     </modules>
 
     <properties>
@@ -23,5 +22,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <packaging>pom</packaging>
 
 </project>

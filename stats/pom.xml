@@ -12,16 +12,16 @@
     <artifactId>stats</artifactId>
     <packaging>pom</packaging>
 
+    <modules>
+        <module>client</module>
+        <module>dto</module>
+        <module>stats-server</module>
+    </modules>
+
     <properties>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
-    <modules>
-        <module>stats-client</module>
-        <module>stats-dto</module>
-        <module>stats-server</module>
-    </modules>
 
 </project>

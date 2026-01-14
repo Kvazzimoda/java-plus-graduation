@@ -5,52 +5,69 @@ spring:
     gateway:
       discovery.locator.enabled: true
       routes:
-        - id: main-admin
-          uri: lb://main-service
+        # Категории
+        - id: categories_all
+          uri: lb://event-service
           predicates:
-            - Path=/admin/**
+            - Path=/categories/**, /admin/categories/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-        - id: main-private
-          uri: lb://main-service
+        # Комментарии
+        - id: comments_all
+          uri: lb://comment-service
           predicates:
-            - Path=/users/**
+            - Path=/events/*/comments, /users/*/comments/**, /admin/comments/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-        - id: main-public
-          uri: lb://main-service
+        # Компиляции
+        - id: compilations_all
+          uri: lb://event-service
           predicates:
-            - Path=/categories/**,/events/**,/compilations/**,/events/*/comments/**
+            - Path=/compilations/**, /admin/compilations/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-        - id: stats
-          uri: lb://stats-service
+        # Ивенты
+        - id: events_all
+          uri: lb://event-service
           predicates:
-            - Path=/hit,/stats
+            - Path=/events/**, /users/*/events/**, /admin/events/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-# Настройки Eureka
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-    healthcheck:
-      enabled: true
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.application.name}:${server.port}
+        # Запросы
+        - id: requests_all
+          uri: lb://request-service
+          predicates:
+            - Path=/users/*/requests/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-# Мониторинг и метрики
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,gateway
-  endpoint:
-    health:
-      show-details: always
-    gateway:
-      enabled: true
+        # Пользователи
+        - id: users_all
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
+          filters:
+            - CircuitBreaker=mainCircuit
 
-# Логирование
+resilience4j.circuitbreaker:
+  configs:
+    default:
+      slidingWindowSize: 10
+      failureRateThreshold: 50
+      waitDurationInOpenState: 10000
+      permittedNumberOfCallsInHalfOpenState: 3
+      minimumNumberOfCalls: 5
+      automaticTransitionFromOpenToHalfOpenEnabled: true
+      slidingWindowType: COUNT_BASED
+
+  instances:
+    mainCircuit:
+      baseConfig: default
+
 logging:
   level:
     root: INFO
