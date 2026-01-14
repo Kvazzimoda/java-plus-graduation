@@ -4,7 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+        "ru.practicum.request",
+        "ru.practicum.stats"
+})
 @EnableFeignClients(basePackages = "ru.practicum.core.client")
 public class RequestApplication {
     public static void main(String[] args) {

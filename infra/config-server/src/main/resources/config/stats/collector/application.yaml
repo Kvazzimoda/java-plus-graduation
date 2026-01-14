@@ -1,0 +1,37 @@
+server:
+  port: 0
+
+grpc:
+  server:
+    port: 0
+
+spring:
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        initial-interval: 3000
+        max-attempts: 10
+        max-interval: 10000
+  jackson:
+    time-zone: UTC
+
+logging:
+  level:
+    root: INFO
+    ru.practicum.stats.collector: DEBUG
+    org.apache.kafka: INFO
+    org.springframework: ERROR
+
+kafka:
+  producer:
+    bootstrap-servers: localhost:9092
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: ru.practicum.stats.avro.serializer.GeneralAvroSerializer
+    acks: all
+    retries: 3
+    max-in-flight-requests-per-connection: 1
+    linger-ms: 10
+    batch-size: 16384
+  topic:
+    user-action: stats.user-actions.v1

@@ -18,7 +18,11 @@ public interface EventService {
                                         Pageable pageable,
                                         HttpServletRequest request);
 
-    EventFullDto getPublicEvent(Long eventId, HttpServletRequest request);
+    EventFullDto getPublicEvent(Long id, Long userId, HttpServletRequest request);
+
+    List<EventShortDto> getRecommendations(Long userId);
+
+    void like(Long eventId, Long userId);
 
     // ===================== PRIVATE (USER) =====================
 

@@ -10,8 +10,10 @@ import ru.practicum.core.dto.ConfirmedRequestsCountDto;
 
 import ru.practicum.main.exception.NotFoundException;
 import ru.practicum.main.model.Event;
-import ru.practicum.stats.client.StatClient;
-import ru.practicum.stats.dto.dto.ViewStatsDto;
+import ru.practicum.stats.client.CollectorClient;
+import ru.practicum.stats.client.RecommendationsClient;
+import ru.practicum.stats.proto.InteractionsCountRequestProto;
+import ru.practicum.stats.proto.RecommendedEventProto;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -26,66 +28,59 @@ import java.util.stream.Collectors;
 public abstract class AbstractEventService {
 
     protected final RequestClient requestClient;
-    protected final StatClient statClient;
+    protected final CollectorClient collectorClient;
+    protected final RecommendationsClient recommendationsClient;
     protected final UserClient userClient;
 
-    protected Map<Long, Long> getEventsViews(List<Event> events) {
+    protected Map<Long, Double> getEventsRatings(List<Event> events) {
         if (events.isEmpty()) {
             return Collections.emptyMap();
         }
-
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
-                .collect(Collectors.toList());
-
-        LocalDateTime start = LocalDateTime.of(2000, 1, 1, 0, 0);
-        LocalDateTime end = LocalDateTime.now();
-
+        List<Long> eventIds = events.stream()
+                .map(Event::getId)
+                .toList();
         try {
-            ResponseEntity<List<ViewStatsDto>> response = statClient.getStats(start, end, uris, true);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody().stream()
-                        .collect(Collectors.toMap(
-                                stats -> extractEventIdFromUri(stats.getUri()),
-                                ViewStatsDto::getHits
-                        ));
+            InteractionsCountRequestProto.Builder requestBuilder = InteractionsCountRequestProto.newBuilder();
+            eventIds.forEach(requestBuilder::addEventId);
+            List<RecommendedEventProto> result = recommendationsClient.getInteractionsCount(requestBuilder.build());
+            Map<Long, Double> ratings = result.stream()
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
+            // Заполняем нулями отсутствующие события
+            for (Long eventId : eventIds) {
+                ratings.putIfAbsent(eventId, 0.0);
             }
+            log.debug("Получены рейтинги для {} событий: {}", eventIds.size(), ratings);
+            return ratings;
         } catch (Exception e) {
-            log.warn("Ошибка при получении статистики просмотров: {}", e.getMessage());
-        }
-
-        return events.stream()
-                .collect(Collectors.toMap(Event::getId, event -> 0L));
-    }
-
-    protected Long extractEventIdFromUri(String uri) {
-        try {
-            return Long.parseLong(uri.replace("/events/", ""));
-        } catch (NumberFormatException e) {
-            log.warn("Не удалось извлечь ID события из URI: {}", uri);
-            return 0L;
+            log.warn("Ошибка при получении рейтингов через gRPC для событий {}: {}",eventIds, e.getMessage());
+            // Возвращаем нулевые рейтинги при ошибке
+            return eventIds.stream()
+                    .collect(Collectors.toMap(
+                            Function.identity(),
+                            id -> 0.0
+                    ));
         }
     }
 
-    protected Long getEventViews(Long eventId) {
+    protected Double getEventRating(Long eventId) {
         try {
-            LocalDateTime start = LocalDateTime.of(2000, 1, 1, 0, 0);
-            LocalDateTime end = LocalDateTime.now();
-            List<String> uris = List.of("/events/" + eventId);
+            InteractionsCountRequestProto request = InteractionsCountRequestProto.newBuilder()
+                    .addEventId(eventId)
+                    .build();
 
-            ResponseEntity<List<ViewStatsDto>> response = statClient.getStats(start, end, uris, true);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody().stream()
-                        .findFirst()
-                        .map(ViewStatsDto::getHits)
-                        .orElse(0L);
+            List<RecommendedEventProto> result = recommendationsClient.getInteractionsCount(request);
+            if (result.isEmpty()) {
+                return 0.0;
             }
+            return result.get(0).getScore();
+
         } catch (Exception e) {
-            log.warn("Ошибка при получении статистики просмотров для события {}: {}", eventId, e.getMessage());
+            log.warn("Ошибка при получении рейтинга для события {}: {}", eventId, e.getMessage());
+            return 0.0;
         }
-        return 0L;
     }
 
     protected Map<Long, Integer> getConfirmedRequests(List<Event> events) {
@@ -96,17 +91,17 @@ public abstract class AbstractEventService {
                 .map(Event::getId)
                 .toList();
         try {
-        List<ConfirmedRequestsCountDto> results = requestClient.countConfirmedRequestsByEventIds(eventIds);
-        Map<Long, Long> confirmedRequestsMap = results.stream()
-                .collect(Collectors.toMap(
-                        ConfirmedRequestsCountDto::getEventId,
-                        ConfirmedRequestsCountDto::getCount
-                ));
-        return eventIds.stream()
-                .collect(Collectors.toMap(
-                        eventId -> eventId,
-                        eventId -> confirmedRequestsMap.getOrDefault(eventId, 0L).intValue()
-                ));
+            List<ConfirmedRequestsCountDto> results = requestClient.countConfirmedRequestsByEventIds(eventIds);
+            Map<Long, Long> confirmedRequestsMap = results.stream()
+                    .collect(Collectors.toMap(
+                            ConfirmedRequestsCountDto::getEventId,
+                            ConfirmedRequestsCountDto::getCount
+                    ));
+            return eventIds.stream()
+                    .collect(Collectors.toMap(
+                            eventId -> eventId,
+                            eventId -> confirmedRequestsMap.getOrDefault(eventId, 0L).intValue()
+                    ));
         } catch (Exception e) {
             log.warn("Не удалось получить количество подтвержденных запросов для событий {}: {}",
                     eventIds, e.getMessage());

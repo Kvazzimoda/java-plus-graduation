@@ -64,7 +64,7 @@ public class Event {
     @Column(name = "title", nullable = false, length = 120)
     private String title;
 
-    //Кол-во просмотров не храним в БД, будем получать из сервера статистики
+    //Рейтинг не храним в БД, будем получать из сервиса рекомендаций
 
     public enum EventState {
         PENDING, PUBLISHED, CANCELED
