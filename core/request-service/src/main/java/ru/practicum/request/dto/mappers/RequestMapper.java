@@ -2,8 +2,8 @@ package ru.practicum.request.dto.mappers;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import ru.practicum.core.dto.RequestDto;
 import ru.practicum.request.dto.response.request.ParticipationRequestDto;
-import ru.practicum.request.dto.response.request.RequestDto;
 import ru.practicum.request.model.Request;
 
 import java.util.List;
@@ -32,7 +32,7 @@ public class RequestMapper {
                 .created(request.getCreated())
                 .eventId(request.getEventId())
                 .requesterId(request.getRequesterId())
-                .status(request.getStatus())
+                .status(RequestDto.RequestStatusDto.valueOf(request.getStatus().name()))
                 .build();
     }
 

@@ -1,8 +1,8 @@
 package ru.practicum.request.service;
 
-import ru.practicum.request.dto.request.request.RequestStatusUpdateDto;
-import ru.practicum.request.dto.response.request.ConfirmedRequestsCountDto;
-import ru.practicum.request.dto.response.request.RequestDto;
+import ru.practicum.core.dto.ConfirmedRequestsCountDto;
+import ru.practicum.core.dto.RequestDto;
+import ru.practicum.core.dto.RequestStatusUpdateDto;
 
 import java.util.List;
 

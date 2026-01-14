@@ -2,9 +2,9 @@ package ru.practicum.request.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.request.dto.request.request.RequestStatusUpdateDto;
-import ru.practicum.request.dto.response.request.ConfirmedRequestsCountDto;
-import ru.practicum.request.dto.response.request.RequestDto;
+import ru.practicum.core.dto.ConfirmedRequestsCountDto;
+import ru.practicum.core.dto.RequestDto;
+import ru.practicum.core.dto.RequestStatusUpdateDto;
 import ru.practicum.request.service.RequestInternalService;
 
 import java.util.List;

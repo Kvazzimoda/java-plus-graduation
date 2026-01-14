@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.main.dto.response.event.EventDto;
+import ru.practicum.core.dto.EventDto;
 import ru.practicum.main.exception.NotFoundException;
 import ru.practicum.main.model.Event;
 import ru.practicum.main.repository.EventRepository;
@@ -29,7 +29,7 @@ public class EventInternalServiceImpl implements EventInternalService {
                 .initiatorId(event.getInitiatorId())
                 .participantLimit(event.getParticipantLimit())
                 .requestModeration(event.getRequestModeration())
-                .state(event.getState())
+                .state(EventDto.EventState.valueOf(event.getState().name()))
                 .build();
     }
 }

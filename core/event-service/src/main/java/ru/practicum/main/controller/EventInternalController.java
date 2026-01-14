@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.practicum.main.dto.response.event.EventDto;
+import ru.practicum.core.dto.EventDto;
 import ru.practicum.main.service.EventInternalService;
 
 @RestController
