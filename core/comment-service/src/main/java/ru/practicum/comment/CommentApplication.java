@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
-@EnableFeignClients(basePackages = "ru.practicum.comment.client")
+@EnableFeignClients(basePackages = "ru.practicum.core.client")
 public class CommentApplication {
     public static void main(String[] args) {
         SpringApplication.run(CommentApplication.class, args);

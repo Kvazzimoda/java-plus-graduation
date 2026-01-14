@@ -10,7 +10,7 @@ import ru.practicum.stats.client.configuration.ClientConfig;
 @SpringBootApplication
 @EnableDiscoveryClient
 @Import(ClientConfig.class)
-@EnableFeignClients(basePackages = "ru.practicum.main.client")
+@EnableFeignClients(basePackages = "ru.practicum.core.client")
 public class MainApplication {
     public static void main(String[] args) {
         SpringApplication.run(MainApplication.class, args);
