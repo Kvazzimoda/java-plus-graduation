@@ -184,7 +184,14 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
 
     @Override
     public EventFullDto getPublicEvent(Long id, Long userId, HttpServletRequest request) {
-        collectorClient.sendUserAction(createUserAction(id, userId, ActionTypeProto.ACTION_VIEW));
+        try {
+            collectorClient.sendUserAction(
+                    createUserAction(id, userId, ActionTypeProto.ACTION_VIEW)
+            );
+        } catch (Exception e) {
+            log.warn("Не удалось отправить статистику просмотра события {}, продолжаем без неё", id, e);
+        }
+
         log.debug("Получение публичного события {}", id);
         Event event = eventRepository.findByIdAndState(id, Event.EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException(
@@ -192,7 +199,9 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
 
         UserDto userDto = getUserById(event.getInitiatorId());
         Integer confirmedRequests = getConfirmedRequestsCount(id);
+
         event.setConfirmedRequests(confirmedRequests);
+
         EventFullDto result = EventMapper.toEventFullDto(event, userDto);
         result.setRating(getEventRating(id));
         result.setConfirmedRequests(confirmedRequests);
