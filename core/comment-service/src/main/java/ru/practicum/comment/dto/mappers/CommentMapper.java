@@ -4,8 +4,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.practicum.comment.dto.request.comment.NewCommentDto;
 import ru.practicum.comment.dto.response.comment.CommentDto;
-import ru.practicum.comment.dto.response.user.UserDto;
 import ru.practicum.comment.model.Comment;
+import ru.practicum.core.dto.UserDto;
 
 import static ru.practicum.comment.dto.mappers.UserMapper.toUserShortDto;
 

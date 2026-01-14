@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.request.dto.request.request.RequestStatusUpdateDto;
 import ru.practicum.request.dto.response.request.ConfirmedRequestsCountDto;
 import ru.practicum.request.dto.response.request.RequestDto;
-import ru.practicum.request.service.interfaces.RequestInternalService;
+import ru.practicum.request.service.RequestInternalService;
 
 import java.util.List;
 

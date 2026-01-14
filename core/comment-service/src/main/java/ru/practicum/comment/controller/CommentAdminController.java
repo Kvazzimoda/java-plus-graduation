@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.dto.request.comment.SearchOfCommentByAdminDto;
 import ru.practicum.comment.dto.response.comment.CommentDto;
-import ru.practicum.comment.service.interfaces.CommentAdminService;
+import ru.practicum.comment.service.CommentService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,13 +24,13 @@ import java.util.List;
 @Slf4j
 public class CommentAdminController {
 
-    private final CommentAdminService commentAdminService;
+    private final CommentService commentService;
 
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCommentByAdmin(@PathVariable Long commentId) {
         log.info("Администратор удаляет комментарий с ID {}", commentId);
-        commentAdminService.deleteComment(commentId);
+        commentService.deleteCommentByAdmin(commentId);
     }
 
     @GetMapping
@@ -48,6 +48,6 @@ public class CommentAdminController {
                 .rangeEnd(rangeEnd)
                 .build();
         Pageable pageable = PageRequest.of(from, size);
-        return commentAdminService.getComments(searchOfCommentByAdminDto, pageable);
+        return commentService.getCommentsByAdmin(searchOfCommentByAdminDto, pageable);
     }
 }

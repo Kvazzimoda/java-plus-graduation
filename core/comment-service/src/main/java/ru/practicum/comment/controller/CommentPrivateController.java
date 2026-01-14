@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.dto.request.comment.NewCommentDto;
 import ru.practicum.comment.dto.response.comment.CommentDto;
-import ru.practicum.comment.service.interfaces.CommentPrivateService;
+import ru.practicum.comment.service.CommentService;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ import java.util.List;
 @Slf4j
 public class CommentPrivateController {
 
-    private final CommentPrivateService commentPrivateService;
+    private final CommentService commentService;
 
     @PostMapping("/{eventId}")
     @ResponseStatus(HttpStatus.CREATED)
@@ -31,7 +31,7 @@ public class CommentPrivateController {
                                  @PathVariable Long eventId,
                                  @Valid @RequestBody NewCommentDto newCommentDto) {
         log.info("Создание комментария пользователем {} к событию {}", userId, eventId);
-        return commentPrivateService.addComment(userId, eventId, newCommentDto);
+        return commentService.addComment(userId, eventId, newCommentDto);
     }
 
     @PatchMapping("/{commentId}")
@@ -39,7 +39,7 @@ public class CommentPrivateController {
                                     @PathVariable Long commentId,
                                     @Valid @RequestBody NewCommentDto newCommentDto) {
         log.info("Обновление комментария {} пользователем {}", commentId, userId);
-        return commentPrivateService.updateComment(userId, commentId, newCommentDto);
+        return commentService.updateCommentByUser(userId, commentId, newCommentDto);
     }
 
     @DeleteMapping("/{commentId}")
@@ -47,7 +47,7 @@ public class CommentPrivateController {
     public void deleteComment(@PathVariable Long userId,
                               @PathVariable Long commentId) {
         log.info("Удаление комментария {} пользователем {}", commentId, userId);
-        commentPrivateService.deleteComment(userId, commentId);
+        commentService.deleteCommentByUser(userId, commentId);
     }
 
     @GetMapping
@@ -56,6 +56,6 @@ public class CommentPrivateController {
                                                 @Positive @RequestParam(defaultValue = "10") Integer size) {
         log.info("Получение всех комментариев пользователя {}", userId);
         Pageable pageable = PageRequest.of(from, size);
-        return commentPrivateService.getCommentsByUserId(userId, pageable);
+        return commentService.getCommentsByUserId(userId, pageable);
     }
 }

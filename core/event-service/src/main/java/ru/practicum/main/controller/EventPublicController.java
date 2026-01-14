@@ -14,7 +14,7 @@ import ru.practicum.main.dto.request.event.SearchOfEventByPublicDto;
 import ru.practicum.main.dto.request.event.SortOfEvent;
 import ru.practicum.main.dto.response.event.EventFullDto;
 import ru.practicum.main.dto.response.event.EventShortDto;
-import ru.practicum.main.service.interfaces.EventPublicService;
+import ru.practicum.main.service.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +26,7 @@ import java.util.List;
 @Validated
 public class EventPublicController {
 
-    private final EventPublicService eventPublicService;
+    private final EventService eventService;
 
     @GetMapping
     public List<EventShortDto> getEvents(@RequestParam(name = "text", required = false) String text,
@@ -51,13 +51,13 @@ public class EventPublicController {
                 .sort(sort)
                 .build();
         Pageable pageable = PageRequest.of(from, size);
-        return eventPublicService.getEvents(searchOfEventByPublicDto, pageable, request);
+        return eventService.getPublicEvents(searchOfEventByPublicDto, pageable, request);
     }
 
     @GetMapping("/{id}")
     public EventFullDto getEvent(@PathVariable @Positive Long id,
                                  HttpServletRequest request) {
         log.debug("Поступил публичный запрос на возврат события {}", id);
-        return eventPublicService.getEvent(id, request);
+        return eventService.getPublicEvent(id, request);
     }
 }

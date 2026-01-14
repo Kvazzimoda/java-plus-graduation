@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practicum.main.dto.response.request.RequestDto;
+import ru.practicum.core.dto.RequestDto;
 
 import java.util.Set;
 

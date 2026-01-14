@@ -24,6 +24,7 @@
         <module>request-service</module>
         <module>user-service</module>
         <module>comment-service</module>
+        <module>core-api</module>
     </modules>
 
 </project>

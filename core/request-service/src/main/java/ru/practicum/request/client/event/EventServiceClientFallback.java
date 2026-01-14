@@ -2,7 +2,8 @@ package ru.practicum.request.client.event;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.practicum.request.dto.response.event.EventDto;
+import ru.practicum.core.client.EventClient;
+import ru.practicum.core.dto.EventDto;
 
 @Slf4j
 @Component

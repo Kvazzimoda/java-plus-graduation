@@ -2,9 +2,10 @@ package ru.practicum.main.client.request;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.practicum.main.dto.response.request.ConfirmedRequestsCountDto;
-import ru.practicum.main.dto.response.request.RequestDto;
-import ru.practicum.main.dto.response.request.RequestStatusUpdateDto;
+import ru.practicum.core.client.RequestClient;
+import ru.practicum.core.dto.ConfirmedRequestsCountDto;
+import ru.practicum.core.dto.RequestDto;
+import ru.practicum.core.dto.RequestStatusUpdateDto;
 import ru.practicum.main.exception.NotFoundException;
 
 import java.util.Collections;

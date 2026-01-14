@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.main.dto.request.event.SearchOfEventByAdminDto;
 import ru.practicum.main.dto.request.event.UpdateEventAdminRequest;
 import ru.practicum.main.dto.response.event.EventFullDto;
-import ru.practicum.main.service.interfaces.EventAdminService;
+import ru.practicum.main.service.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +25,7 @@ import java.util.List;
 @Validated
 public class EventAdminController {
 
-    private final EventAdminService eventAdminService;
+    private final EventService eventService;
 
     @GetMapping
     public List<EventFullDto> getEvents(@RequestParam(name = "users", required = false) List<Long> users,
@@ -44,13 +44,13 @@ public class EventAdminController {
                 .rangeEnd(rangeEnd)
                 .build();
         Pageable pageable = PageRequest.of(from, size);
-        return eventAdminService.getEvents(searchOfEventByAdminDto, pageable);
+        return eventService.getAdminEvents(searchOfEventByAdminDto, pageable);
     }
 
     @PatchMapping("/{eventId}")
     public EventFullDto updateEvent(@PathVariable @Positive Long eventId,
                                     @Valid @RequestBody UpdateEventAdminRequest updateEventAdminRequest) {
         log.debug("Поступил админ запрос на обновление события {} c id {}", updateEventAdminRequest, eventId);
-        return eventAdminService.updateEvent(eventId, updateEventAdminRequest);
+        return eventService.updateEventByAdmin(eventId, updateEventAdminRequest);
     }
 }

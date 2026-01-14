@@ -2,7 +2,7 @@ package ru.practicum.main.dto.mappers;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import ru.practicum.main.dto.response.user.UserDto;
+import ru.practicum.core.dto.UserDto;
 import ru.practicum.main.dto.response.user.UserShortDto;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

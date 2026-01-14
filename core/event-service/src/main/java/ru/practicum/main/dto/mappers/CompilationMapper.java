@@ -2,10 +2,10 @@ package ru.practicum.main.dto.mappers;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import ru.practicum.core.dto.UserDto;
 import ru.practicum.main.dto.request.compilation.NewCompilationDto;
 import ru.practicum.main.dto.response.compilation.CompilationDto;
 import ru.practicum.main.dto.response.event.EventShortDto;
-import ru.practicum.main.dto.response.user.UserDto;
 import ru.practicum.main.exception.NotFoundException;
 import ru.practicum.main.model.Compilation;
 import ru.practicum.main.model.Event;

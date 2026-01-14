@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.main.dto.request.category.NewCategoryDto;
 import ru.practicum.main.dto.response.category.CategoryDto;
-import ru.practicum.main.service.interfaces.CategoryService;
+import ru.practicum.main.service.CategoryService;
 
 
 import java.util.List;

@@ -12,11 +12,16 @@
     <artifactId>event-service</artifactId>
 
     <properties>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <querydsl.version>5.1.0</querydsl.version>
     </properties>
+
     <dependencies>
+
+        <dependency>
+            <groupId>ru.practicum</groupId>
+            <artifactId>core-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>ru.practicum</groupId>
@@ -76,13 +81,14 @@
         <dependency>
             <groupId>com.querydsl</groupId>
             <artifactId>querydsl-jpa</artifactId>
-            <version>5.1.0</version>
+            <version>${querydsl.version}</version>
             <classifier>jakarta</classifier>
         </dependency>
+
         <dependency>
             <groupId>com.querydsl</groupId>
             <artifactId>querydsl-apt</artifactId>
-            <version>5.1.0</version>
+            <version>${querydsl.version}</version>
             <classifier>jakarta</classifier>
             <scope>provided</scope>
         </dependency>

@@ -1,6 +1,5 @@
 package ru.practicum.comment.controller;
 
-
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.dto.response.comment.CommentDto;
-import ru.practicum.comment.service.interfaces.CommentPublicService;
+import ru.practicum.comment.service.CommentService;
 
 import java.util.List;
 
@@ -22,7 +21,7 @@ import java.util.List;
 @Slf4j
 public class CommentPublicController {
 
-    private final CommentPublicService commentPublicService;
+    private final CommentService commentService;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -31,6 +30,6 @@ public class CommentPublicController {
                                         @Positive @RequestParam(defaultValue = "10") Integer size) {
         log.info("Получение комментариев для события с ID {}", eventId);
         Pageable pageable = PageRequest.of(from, size);
-        return commentPublicService.getCommentsByEventId(eventId, pageable);
+        return commentService.getCommentsByEventId(eventId, pageable);
     }
 }

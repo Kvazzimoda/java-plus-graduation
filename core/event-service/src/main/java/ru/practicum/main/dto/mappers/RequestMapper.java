@@ -3,7 +3,7 @@ package ru.practicum.main.dto.mappers;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.practicum.main.dto.response.request.ParticipationRequestDto;
-import ru.practicum.main.dto.response.request.RequestDto;
+import ru.practicum.core.dto.RequestDto;
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

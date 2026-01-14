@@ -2,10 +2,11 @@ package ru.practicum.main.dto.mappers;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import ru.practicum.core.dto.UserDto;
 import ru.practicum.main.dto.request.event.NewEventDto;
 import ru.practicum.main.dto.response.event.EventFullDto;
 import ru.practicum.main.dto.response.event.EventShortDto;
-import ru.practicum.main.dto.response.user.UserDto;
+
 import ru.practicum.main.model.Category;
 import ru.practicum.main.model.Event;
 import ru.practicum.main.model.LocationEntity;

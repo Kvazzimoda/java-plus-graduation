@@ -18,7 +18,7 @@ import ru.practicum.main.dto.response.event.EventFullDto;
 import ru.practicum.main.dto.response.event.EventRequestStatusUpdateResult;
 import ru.practicum.main.dto.response.event.EventShortDto;
 import ru.practicum.main.dto.response.request.ParticipationRequestDto;
-import ru.practicum.main.service.interfaces.EventPrivateService;
+import ru.practicum.main.service.EventService;
 
 import java.util.List;
 
@@ -29,7 +29,7 @@ import java.util.List;
 @Validated
 public class EventPrivateController {
 
-    private final EventPrivateService eventPrivateService;
+    private final EventService eventService;
 
     @GetMapping("/{userId}/events")
     public List<EventShortDto> getEvents(@PathVariable @Positive Long userId,
@@ -38,7 +38,7 @@ public class EventPrivateController {
         log.debug("Поступил запрос на получение событий, добавленных текущим пользователем {}, от {} события, всего {}",
                 userId, from, size);
         Pageable pageable = PageRequest.of(from, size);
-        return eventPrivateService.getEvents(userId, pageable);
+        return eventService.getUserEvents(userId, pageable);
     }
 
     @PostMapping("/{userId}/events")
@@ -46,14 +46,14 @@ public class EventPrivateController {
     public EventFullDto addEvent(@PathVariable @Positive Long userId,
                                  @Valid @RequestBody NewEventDto newEventDto) {
         log.debug("Поступил запрос на создание события {} текущим пользователем {}", newEventDto, userId);
-        return eventPrivateService.addEvent(userId, newEventDto);
+        return eventService.addEventByUser(userId, newEventDto);
     }
 
     @GetMapping("/{userId}/events/{eventId}")
     public EventFullDto getEvent(@PathVariable @Positive Long userId,
                                  @PathVariable @Positive Long eventId) {
         log.debug("Поступил запрос на получение события {} пользователя {}", eventId, userId);
-        return eventPrivateService.getEvent(eventId, userId);
+        return eventService.getUserEvent(eventId, userId);
     }
 
     @PatchMapping("/{userId}/events/{eventId}")
@@ -66,7 +66,7 @@ public class EventPrivateController {
                 .userId(userId)
                 .eventId(eventId)
                 .build();
-        return eventPrivateService.updateEvent(userIdAndEventIdDto, updateEventUserRequest);
+        return eventService.updateEventByUser(userIdAndEventIdDto, updateEventUserRequest);
     }
 
     @GetMapping("/{userId}/events/{eventId}/requests")
@@ -74,7 +74,7 @@ public class EventPrivateController {
                                                      @PathVariable @Positive Long eventId) {
         log.debug("Поступил запрос на получение информации о запросах на участие в событии {} " +
                 "текущего пользователя {}", eventId, userId);
-        return eventPrivateService.getRequests(userId, eventId);
+        return eventService.getParticipationRequests(userId, eventId);
     }
 
     @PatchMapping("/{userId}/events/{eventId}/requests")
@@ -87,6 +87,6 @@ public class EventPrivateController {
                 .userId(userId)
                 .eventId(eventId)
                 .build();
-        return eventPrivateService.updateRequests(userIdAndEventIdDto, eventRequestStatusUpdateRequest);
+        return eventService.updateParticipationRequests(userIdAndEventIdDto, eventRequestStatusUpdateRequest);
     }
 }
