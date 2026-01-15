@@ -50,6 +50,9 @@ public class KafkaEventProducer {
 
     public void stop() {
         if (producer != null) {
+            // Отправляем все, что в буфере
+            producer.flush();
+            // Закрываем продюсер
             producer.close();
         }
     }

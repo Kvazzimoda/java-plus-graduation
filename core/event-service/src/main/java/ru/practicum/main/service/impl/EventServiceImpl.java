@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import ru.practicum.core.client.UserClient;
 import ru.practicum.core.dto.UserDto;
@@ -49,6 +51,7 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
 
     private static final int MAX_RESULTS = 10;
 
+    private final TransactionTemplate transactionTemplate;
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
@@ -59,11 +62,14 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
                             EventRepository eventRepository,
                             UserClient userClient,
                             CategoryRepository categoryRepository,
-                            LocationRepository locationRepository) {
+                            LocationRepository locationRepository,
+                            PlatformTransactionManager transactionManager) {
+
         super(requestClient, collectorClient, recommendationsClient, userClient);
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.locationRepository = locationRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
@@ -118,32 +124,46 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
     }
 
     @Override
-    @Transactional
-    public EventFullDto updateEventByUser(UserIdAndEventIdDto userIdAndEventIdDto, UpdateEventUserRequest updateEventUserRequest) {
-        Long userId = userIdAndEventIdDto.getUserId();
-        Long eventId = userIdAndEventIdDto.getEventId();
-        log.debug("Обновление события {} пользователя {}: {}", eventId, userId, updateEventUserRequest);
+    public EventFullDto updateEventByUser(UserIdAndEventIdDto dto,
+                                          UpdateEventUserRequest request) {
 
+        Long userId = dto.getUserId();
+        Long eventId = dto.getEventId();
+
+        // 1. Сетевой вызов ДО транзакции
         UserDto userDto = validateAndGetUser(userId);
 
-        Event event = validateEventOfInitiator(eventId, userId);
-        validateEventCanBeUpdated(event);
-        updateEventFields(event, updateEventUserRequest);
-        if (updateEventUserRequest.getEventDate() != null) {
-            validateEventDate(updateEventUserRequest.getEventDate());
-            event.setEventDate(updateEventUserRequest.getEventDate());
-        }
-        if (updateEventUserRequest.getStateAction() != null) {
-            processStateAction(event, updateEventUserRequest.getStateAction());
-        }
+        Event updatedEvent = transactionTemplate.execute(status -> {
+            Event event = validateEventOfInitiator(eventId, userId);
+            validateEventCanBeUpdated(event);
+
+            updateEventFields(event, request);
+
+            if (request.getEventDate() != null) {
+                validateEventDate(request.getEventDate());
+                event.setEventDate(request.getEventDate());
+            }
+
+            if (request.getStateAction() != null) {
+                processStateAction(event, request.getStateAction());
+            }
+
+            return eventRepository.save(event);
+        });
+
+        // 2. Сетевые вызовы ПОСЛЕ транзакции
         Integer confirmedRequests = getConfirmedRequestsCount(eventId);
-        event.setConfirmedRequests(confirmedRequests);
-        Event updatedEvent = eventRepository.save(event);
+        Double rating = getEventRating(eventId);
+
+        updatedEvent.setConfirmedRequests(confirmedRequests);
+
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
-        result.setRating(getEventRating(eventId));
-        log.info("Событие {} пользователя {} успешно обновлено", eventId, userId);
+        result.setConfirmedRequests(confirmedRequests);
+        result.setRating(rating);
+
         return result;
     }
+
 
     @Override
     public List<EventShortDto> getPublicEvents(SearchOfEventByPublicDto searchDto, Pageable pageable, HttpServletRequest request) {
@@ -242,30 +262,39 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
     }
 
     @Override
-    @Transactional
     public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateRequest) {
         log.debug("Админ обновление события {}: {}", eventId, updateRequest);
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(
-                        String.format("Событие с id=%d не найдено", eventId)));
-        updateEventFields(event, updateRequest);
-        if (updateRequest.getStateAction() != null) {
-            processAdminStateAction(event, updateRequest.getStateAction());
-        }
-        if (updateRequest.getEventDate() != null) {
-            validateEventDateForAdmin(event, updateRequest.getEventDate());
-            event.setEventDate(updateRequest.getEventDate());
-        }
-        Event updatedEvent = eventRepository.save(event);
 
-        UserDto userDto = getUserById(event.getInitiatorId());
+        // Только БД внутри транзакции
+        Event updatedEvent = transactionTemplate.execute(status -> {
+            Event event = eventRepository.findById(eventId)
+                    .orElseThrow(() -> new NotFoundException(
+                            String.format("Событие с id=%d не найдено", eventId)));
 
+            updateEventFields(event, updateRequest);
+
+            if (updateRequest.getStateAction() != null) {
+                processAdminStateAction(event, updateRequest.getStateAction());
+            }
+
+            if (updateRequest.getEventDate() != null) {
+                validateEventDateForAdmin(event, updateRequest.getEventDate());
+                event.setEventDate(updateRequest.getEventDate());
+            }
+
+            return eventRepository.save(event);
+        });
+
+        // Сетевые вызовы — ВНЕ транзакции
+        UserDto userDto = getUserById(updatedEvent.getInitiatorId());
         Integer confirmedRequests = getConfirmedRequestsCount(eventId);
+        Double rating = getEventRating(eventId);
+
         updatedEvent.setConfirmedRequests(confirmedRequests);
 
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
-        result.setRating(getEventRating(eventId));
         result.setConfirmedRequests(confirmedRequests);
+        result.setRating(rating);
 
         log.info("Событие {} успешно обновлено администратором", eventId);
         return result;

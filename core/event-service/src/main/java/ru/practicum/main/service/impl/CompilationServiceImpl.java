@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.practicum.core.client.UserClient;
 import ru.practicum.core.dto.UserDto;
 import ru.practicum.main.dto.request.compilation.NewCompilationDto;
@@ -31,20 +32,26 @@ import static ru.practicum.main.dto.mappers.CompilationMapper.toEntity;
 @Slf4j
 @RequiredArgsConstructor
 public class CompilationServiceImpl implements CompilationService {
+
+    private final TransactionTemplate transactionTemplate;
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
     private final UserClient userClient;
 
     @Override
-    @Transactional
     public CompilationDto add(NewCompilationDto newCompilation) {
-        log.debug("добавление новой подборки{}", newCompilation);
-        Set<Event> events = eventRepository.findAllByIdIn(newCompilation.getEvents());
+        log.debug("добавление новой подборки {}", newCompilation);
 
-        Map<Long, UserDto> usersMap = getUsersForEvents(events);
+        // 1. Работа с БД — в транзакции
+        Compilation savedCompilation = transactionTemplate.execute(status -> {
+            Set<Event> events = eventRepository.findAllByIdIn(newCompilation.getEvents());
+            Compilation compilation = toEntity(newCompilation, events);
+            return compilationRepository.save(compilation);
+        });
 
-        Compilation compilation = toEntity(newCompilation, events);
-        Compilation savedCompilation = compilationRepository.save(compilation);
+        // 2. СЕТЬ — после транзакции
+        Map<Long, UserDto> usersMap = getUsersForEvents(savedCompilation.getEvents());
+
         return toDto(savedCompilation, usersMap);
     }
 
@@ -56,18 +63,26 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
-    @Transactional
-    public CompilationDto update(Long compilationId, UpdateCompilationRequest updatedCompilation) {
-        log.debug("обновление подборки с id{}", compilationId);
-        Compilation oldCompilation = getById(compilationId);
-        Updater.update(updatedCompilation.getEvents(), () -> oldCompilation.setEvents(eventRepository.findAllByIdIn(updatedCompilation.getEvents())));
-        Updater.update(updatedCompilation.getTitle(), () -> oldCompilation.setTitle(updatedCompilation.getTitle()));
-        Updater.update(updatedCompilation.getPinned(), () -> oldCompilation.setPinned(updatedCompilation.getPinned()));
+    public CompilationDto update(Long compilationId,
+                                 UpdateCompilationRequest updatedCompilation) {
 
-        Compilation updated = compilationRepository.save(oldCompilation);
+        Compilation updated = transactionTemplate.execute(status -> {
+            Compilation oldCompilation = getById(compilationId);
+
+            Updater.update(updatedCompilation.getEvents(),
+                    () -> oldCompilation.setEvents(
+                            eventRepository.findAllByIdIn(updatedCompilation.getEvents())));
+
+            Updater.update(updatedCompilation.getTitle(),
+                    () -> oldCompilation.setTitle(updatedCompilation.getTitle()));
+
+            Updater.update(updatedCompilation.getPinned(),
+                    () -> oldCompilation.setPinned(updatedCompilation.getPinned()));
+
+            return compilationRepository.save(oldCompilation);
+        });
+
         Map<Long, UserDto> usersMap = getUsersForEvents(updated.getEvents());
-
-        log.info("обновленная подборка{}", updatedCompilation);
 
         return toDto(updated, usersMap);
     }
