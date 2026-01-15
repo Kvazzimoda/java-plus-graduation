@@ -60,10 +60,49 @@ public class RequestServiceImpl implements RequestService {
             throw new IllegalArgumentException("параметр eventId обязателен");
         }
 
-        // 1. ВНЕ транзакции — сетевые вызовы
+        // 1. Получаем Event и User через сетевые клиенты (вне транзакции)
         EventDto event = getEventById(eventId);
         UserDto user = getUserById(userId);
 
+        // 2. Проверки "до создания запроса"
+        if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
+            throw new ConflictException("запрос на участие в событии " + eventId + " уже создан");
+        }
+        if (event.getInitiatorId().equals(userId)) {
+            throw new ConflictException(userId + " является инициатором события");
+        }
+        if (event.getState() != EventDto.EventState.PUBLISHED) {
+            throw new ConflictException("нельзя участвовать в неопубликованном событии");
+        }
+
+        // 3. Создаём объект Request **в транзакции**
+        Request request = transactionTemplate.execute(status -> {
+            int confirmedRequests = 0;
+            if (!event.getRequestModeration()) {
+                confirmedRequests = requestRepository.countConfirmedRequestsByEventId(eventId);
+                if (confirmedRequests >= event.getParticipantLimit() && event.getParticipantLimit() != 0) {
+                    throw new ConflictException("Достигнут лимит подтверждённых участников");
+                }
+            }
+
+            Request newRequest = Request.builder()
+                    .requesterId(user.getId())
+                    .eventId(eventId)
+                    .created(LocalDateTime.now())
+                    .status(event.getRequestModeration() ? Request.RequestStatus.PENDING : Request.RequestStatus.CONFIRMED)
+                    .build();
+
+            // Если лимит == 0, статус сразу CONFIRMED
+            if (event.getParticipantLimit() == 0) {
+                newRequest.setStatus(Request.RequestStatus.CONFIRMED);
+            }
+
+            return requestRepository.save(newRequest);
+        });
+
+        assert request != null;
+
+        // 4. Вызов внешнего сервиса (сбор статистики) — вне транзакции
         try {
             collectorClient.sendUserAction(
                     createUserAction(eventId, userId, ActionTypeProto.ACTION_REGISTER)
@@ -72,39 +111,7 @@ public class RequestServiceImpl implements RequestService {
             log.warn("Не удалось отправить статистику, продолжаем без неё", e);
         }
 
-        // 2. В транзакции — только БД и проверки
-        return transactionTemplate.execute(status -> {
-            if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
-                throw new ConflictException("запрос на участие в событии " + eventId + " уже создан");
-            }
-            if (event.getInitiatorId().equals(userId)) {
-                throw new ConflictException(userId + " является инициатором события");
-            }
-            if (event.getState() != EventDto.EventState.PUBLISHED) {
-                throw new ConflictException("нельзя участвовать в неопубликованном событии");
-            }
-
-            if (!event.getRequestModeration()) {
-                int confirmedRequests = requestRepository.countConfirmedRequestsByEventId(eventId);
-                if (confirmedRequests >= event.getParticipantLimit() && event.getParticipantLimit() != 0) {
-                    throw new ConflictException("Достигнут лимит подтверждённых участников");
-                }
-            }
-
-            Request request = Request.builder()
-                    .requesterId(user.getId())
-                    .eventId(eventId)
-                    .created(LocalDateTime.now())
-                    .status(event.getRequestModeration() ? Request.RequestStatus.PENDING : Request.RequestStatus.CONFIRMED)
-                    .build();
-
-            if (event.getParticipantLimit() == 0) {
-                request.setStatus(Request.RequestStatus.CONFIRMED);
-            }
-
-            Request saved = requestRepository.save(request);
-            return RequestMapper.toParticipationRequestDto(saved);
-        });
+        return RequestMapper.toParticipationRequestDto(request);
     }
 
     private UserDto getUserById(Long userId) {
