@@ -130,7 +130,7 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
         Long userId = dto.getUserId();
         Long eventId = dto.getEventId();
 
-        // 1. Сетевой вызов ДО транзакции
+        // 1. ВНЕ транзакции
         UserDto userDto = validateAndGetUser(userId);
 
         Event updatedEvent = transactionTemplate.execute(status -> {
@@ -148,13 +148,19 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
                 processStateAction(event, request.getStateAction());
             }
 
-            return eventRepository.save(event);
+            Event saved = eventRepository.save(event);
+
+            // Форсируем ленивые связи, используемые в EventMapper
+            saved.getCategory().getId();
+            saved.getLocationEntity().getId();
+            return saved;
         });
 
-        // 2. Сетевые вызовы ПОСЛЕ транзакции
+        // 2. СЕТЬ — после транзакции
         Integer confirmedRequests = getConfirmedRequestsCount(eventId);
         Double rating = getEventRating(eventId);
 
+        assert updatedEvent != null;
         updatedEvent.setConfirmedRequests(confirmedRequests);
 
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
@@ -265,7 +271,6 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
     public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateRequest) {
         log.debug("Админ обновление события {}: {}", eventId, updateRequest);
 
-        // Только БД внутри транзакции
         Event updatedEvent = transactionTemplate.execute(status -> {
             Event event = eventRepository.findById(eventId)
                     .orElseThrow(() -> new NotFoundException(
@@ -282,10 +287,15 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
                 event.setEventDate(updateRequest.getEventDate());
             }
 
-            return eventRepository.save(event);
+            Event saved = eventRepository.save(event);
+
+            // Форсируем ленивые связи
+            saved.getCategory().getId();
+            saved.getLocationEntity().getId();
+            return saved;
         });
 
-        // Сетевые вызовы — ВНЕ транзакции
+        assert updatedEvent != null;
         UserDto userDto = getUserById(updatedEvent.getInitiatorId());
         Integer confirmedRequests = getConfirmedRequestsCount(eventId);
         Double rating = getEventRating(eventId);

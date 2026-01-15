@@ -45,9 +45,18 @@ public class CompilationServiceImpl implements CompilationService {
         // 1. Работа с БД — в транзакции
         Compilation savedCompilation = transactionTemplate.execute(status -> {
             Set<Event> events = eventRepository.findAllByIdIn(newCompilation.getEvents());
+
+            // Сохраняем подборку с привязанными событиями
             Compilation compilation = toEntity(newCompilation, events);
-            return compilationRepository.save(compilation);
+            Compilation saved = compilationRepository.save(compilation);
+
+            // force инициализацию events, чтобы можно было безопасно использовать после транзакции
+            saved.getEvents().size();
+
+            return saved;
         });
+
+        assert savedCompilation != null;
 
         // 2. СЕТЬ — после транзакции
         Map<Long, UserDto> usersMap = getUsersForEvents(savedCompilation.getEvents());
@@ -79,9 +88,12 @@ public class CompilationServiceImpl implements CompilationService {
             Updater.update(updatedCompilation.getPinned(),
                     () -> oldCompilation.setPinned(updatedCompilation.getPinned()));
 
+            // Форсируем ленивые связи
+            oldCompilation.getEvents().size();
             return compilationRepository.save(oldCompilation);
         });
 
+        assert updated != null;
         Map<Long, UserDto> usersMap = getUsersForEvents(updated.getEvents());
 
         return toDto(updated, usersMap);
