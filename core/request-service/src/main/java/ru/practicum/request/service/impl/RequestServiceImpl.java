@@ -60,11 +60,9 @@ public class RequestServiceImpl implements RequestService {
             throw new IllegalArgumentException("параметр eventId обязателен");
         }
 
-        // 1. Получаем Event и User через сетевые клиенты (вне транзакции)
         EventDto event = getEventById(eventId);
         UserDto user = getUserById(userId);
 
-        // 2. Проверки "до создания запроса"
         if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
             throw new ConflictException("запрос на участие в событии " + eventId + " уже создан");
         }
@@ -74,35 +72,36 @@ public class RequestServiceImpl implements RequestService {
         if (event.getState() != EventDto.EventState.PUBLISHED) {
             throw new ConflictException("нельзя участвовать в неопубликованном событии");
         }
-
-        // 3. Создаём объект Request **в транзакции**
-        Request request = transactionTemplate.execute(status -> {
-            int confirmedRequests = 0;
-            if (!event.getRequestModeration()) {
-                confirmedRequests = requestRepository.countConfirmedRequestsByEventId(eventId);
-                if (confirmedRequests >= event.getParticipantLimit() && event.getParticipantLimit() != 0) {
-                    throw new ConflictException("Достигнут лимит подтверждённых участников");
-                }
+        if (!event.getRequestModeration()) {
+            int confirmedRequests = requestRepository.countConfirmedRequestsByEventId(eventId);
+            if (confirmedRequests >= event.getParticipantLimit() && event.getParticipantLimit() != 0) {
+                throw new ConflictException("Достигнут лимит подтверждённых участников");
             }
+        }
 
+        // Определяем статус ДО транзакции как финальную переменную
+        final Request.RequestStatus finalRequestStatus;
+        if (event.getParticipantLimit() == 0) {
+            finalRequestStatus = Request.RequestStatus.CONFIRMED;
+        } else {
+            finalRequestStatus = event.getRequestModeration()
+                    ? Request.RequestStatus.PENDING
+                    : Request.RequestStatus.CONFIRMED;
+        }
+
+        // Создаем объект и сохраняем в транзакции
+        Request request = transactionTemplate.execute(transactionStatus -> {
             Request newRequest = Request.builder()
                     .requesterId(user.getId())
                     .eventId(eventId)
                     .created(LocalDateTime.now())
-                    .status(event.getRequestModeration() ? Request.RequestStatus.PENDING : Request.RequestStatus.CONFIRMED)
+                    .status(finalRequestStatus)  // используем финальную переменную
                     .build();
-
-            // Если лимит == 0, статус сразу CONFIRMED
-            if (event.getParticipantLimit() == 0) {
-                newRequest.setStatus(Request.RequestStatus.CONFIRMED);
-            }
 
             return requestRepository.save(newRequest);
         });
 
-        assert request != null;
-
-        // 4. Вызов внешнего сервиса (сбор статистики) — вне транзакции
+        // Статистика
         try {
             collectorClient.sendUserAction(
                     createUserAction(eventId, userId, ActionTypeProto.ACTION_REGISTER)
