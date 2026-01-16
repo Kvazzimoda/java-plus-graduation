@@ -297,13 +297,10 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
 
         assert updatedEvent != null;
         UserDto userDto = getUserById(updatedEvent.getInitiatorId());
-        Integer confirmedRequests = getConfirmedRequestsCount(eventId);
         Double rating = getEventRating(eventId);
 
-        updatedEvent.setConfirmedRequests(confirmedRequests);
 
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
-        result.setConfirmedRequests(confirmedRequests);
         result.setRating(rating);
 
         log.info("Событие {} успешно обновлено администратором", eventId);
