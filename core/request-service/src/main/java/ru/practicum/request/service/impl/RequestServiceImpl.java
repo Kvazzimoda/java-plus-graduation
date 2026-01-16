@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.practicum.core.client.EventClient;
 import ru.practicum.core.dto.EventDto;
 import ru.practicum.request.dto.mappers.RequestMapper;
@@ -30,6 +31,8 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class RequestServiceImpl implements RequestService {
+
+    private final TransactionTemplate transactionTemplate;
     private final UserClient userClient;
     private final EventClient eventClient;
     private final RequestRepository requestRepository;
@@ -56,15 +59,17 @@ public class RequestServiceImpl implements RequestService {
         if (eventId == null) {
             throw new IllegalArgumentException("параметр eventId обязателен");
         }
+
         EventDto event = getEventById(eventId);
         UserDto user = getUserById(userId);
+
         if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
             throw new ConflictException("запрос на участие в событии " + eventId + " уже создан");
         }
         if (event.getInitiatorId().equals(userId)) {
             throw new ConflictException(userId + " является инициатором события");
         }
-        if (event.getState() != EventDto.EventState.PUBLISHED) {
+        if (event.getParticipantLimit() != 0 && event.getState() != EventDto.EventState.PUBLISHED) {
             throw new ConflictException("нельзя участвовать в неопубликованном событии");
         }
         if (!event.getRequestModeration()) {
@@ -73,15 +78,30 @@ public class RequestServiceImpl implements RequestService {
                 throw new ConflictException("Достигнут лимит подтверждённых участников");
             }
         }
-        Request request = Request.builder()
-                .requesterId(user.getId())
-                .eventId(eventId)
-                .created(LocalDateTime.now())
-                .status(event.getRequestModeration() ? Request.RequestStatus.PENDING : Request.RequestStatus.CONFIRMED)
-                .build();
+
+        // Определяем статус ДО транзакции как финальную переменную
+        final Request.RequestStatus finalRequestStatus;
         if (event.getParticipantLimit() == 0) {
-            request.setStatus(Request.RequestStatus.CONFIRMED);
+            finalRequestStatus = Request.RequestStatus.CONFIRMED;
+        } else {
+            finalRequestStatus = event.getRequestModeration()
+                    ? Request.RequestStatus.PENDING
+                    : Request.RequestStatus.CONFIRMED;
         }
+
+        // Создаем объект и сохраняем в транзакции
+        Request request = transactionTemplate.execute(transactionStatus -> {
+            Request newRequest = Request.builder()
+                    .requesterId(user.getId())
+                    .eventId(eventId)
+                    .created(LocalDateTime.now())
+                    .status(finalRequestStatus)  // используем финальную переменную
+                    .build();
+
+            return requestRepository.save(newRequest);
+        });
+
+        // Статистика
         try {
             collectorClient.sendUserAction(
                     createUserAction(eventId, userId, ActionTypeProto.ACTION_REGISTER)
@@ -89,7 +109,8 @@ public class RequestServiceImpl implements RequestService {
         } catch (Exception e) {
             log.warn("Не удалось отправить статистику, продолжаем без неё", e);
         }
-        return RequestMapper.toParticipationRequestDto(requestRepository.save(request));
+
+        return RequestMapper.toParticipationRequestDto(request);
     }
 
     private UserDto getUserById(Long userId) {

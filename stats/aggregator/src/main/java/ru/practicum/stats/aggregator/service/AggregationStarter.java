@@ -26,7 +26,7 @@ import java.util.Map;
 public class AggregationStarter {
     private final EventsSimilarityService eventsSimilarityService;
 
-    private static final Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
+    private final Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
 
     private final KafkaAggregatorConfig.ConsumerConfig consumerConfig;
     private final KafkaConsumer<String, UserActionAvro> consumer;
@@ -64,7 +64,7 @@ public class AggregationStarter {
                     // обрабатываем очередную запись
                     handleRecord(record.value());
                     // фиксируем оффсеты обработанных записей, если нужно
-                    manageOffsets(record, count, consumer);
+                    manageOffsets(record, count);
                     count++;
                 }
                 producer.flush();
@@ -96,9 +96,7 @@ public class AggregationStarter {
         }
     }
 
-    private static void manageOffsets(ConsumerRecord<String, UserActionAvro> record, int count,
-                                      KafkaConsumer<String, UserActionAvro> consumer) {
-        // обновляем текущий оффсет для топика-партиции
+    private void manageOffsets(ConsumerRecord<String, UserActionAvro> record, int count) {
         currentOffsets.put(
                 new TopicPartition(record.topic(), record.partition()),
                 new OffsetAndMetadata(record.offset() + 1)

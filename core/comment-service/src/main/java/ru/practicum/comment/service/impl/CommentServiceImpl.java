@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.practicum.core.client.EventClient;
 import ru.practicum.comment.dto.mappers.CommentMapper;
 import ru.practicum.comment.dto.request.comment.NewCommentDto;
@@ -27,10 +28,10 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 @Slf4j
 public class CommentServiceImpl implements CommentService {
 
+    private final TransactionTemplate transactionTemplate;
     private final CommentRepository commentRepository;
     private final UserClient userClient;
     private final EventClient eventClient;
@@ -65,66 +66,69 @@ public class CommentServiceImpl implements CommentService {
 
 
     @Override
-    @Transactional
     public CommentDto addComment(Long userId, Long eventId, NewCommentDto newCommentDto) {
-        log.info("Пользователь с ID: {} добавляет комментарий к событию с ID: {}", userId, eventId);
+
+        // 1. ВНЕ транзакции
         UserDto user = getUserById(userId);
-        EventDto event;
-        try {
-            event = eventClient.getEventById(eventId);
-            log.debug("Existing Event received from event-service: {}", event);
-        } catch (Exception e) {
-            log.debug("Failed to get event from event-service: {}", e.getMessage());
-            throw new NotFoundException("Событие c userId " + eventId + " не найдено");
-        }
+        EventDto event = getEventById(eventId);
 
-        Comment comment = CommentMapper.toEntity(newCommentDto);
-        comment.setUserId(userId);
-        comment.setEventId(event.getId());
-        comment.setCreatedOn(LocalDateTime.now());
-        comment.setUpdatedOn(LocalDateTime.now()); // Установим initial timestamp
-
-        Comment savedComment = commentRepository.save(comment);
-        log.info("Добавлен новый комментарий: {}", savedComment);
+        // 2. В транзакции — только БД
+        Comment savedComment = transactionTemplate.execute(status -> {
+            Comment comment = CommentMapper.toEntity(newCommentDto);
+            comment.setUserId(userId);
+            comment.setEventId(event.getId());
+            comment.setCreatedOn(LocalDateTime.now());
+            comment.setUpdatedOn(LocalDateTime.now());
+            return commentRepository.save(comment);
+        });
 
         return CommentMapper.toDto(savedComment, user);
     }
 
     @Override
-    @Transactional
     public void deleteCommentByUser(Long userId, Long commentId) {
-        log.info("Пользователь с ID: {} пытается удалить свой комментарий с ID: {}", userId, commentId);
-        getUserById(userId);
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException(String.format("Comment with id=%s was not found", commentId)));
+        // Вне транзакции вызываем внешние сервисы
+        UserDto user = getUserById(userId);
 
-        if (!comment.getUserId().equals(userId)) {
-            throw new IllegalArgumentException(String.format("User with ID: %s is not the author of the comment with ID: %s", userId, commentId));
-        }
+        // В транзакции только доступ к БД
+        transactionTemplate.execute(status -> {
+            Comment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " не найден"));
 
-        commentRepository.delete(comment);
-        log.info("Комментарий с ID: {} удален", commentId);
+            if (!comment.getUserId().equals(userId)) {
+                throw new IllegalArgumentException("User is not the author");
+            }
+
+            commentRepository.delete(comment);
+            return null;
+        });
+
+        log.info("Комментарий с ID: {} удален пользователем {}", commentId, userId);
     }
+
 
     @Override
-    @Transactional
     public CommentDto updateCommentByUser(Long userId, Long commentId, NewCommentDto updateCommentDto) {
-        log.info("Пользователь с ID: {} пытается обновить свой комментарий с ID: {}", userId, commentId);
+        // Вне транзакции
         UserDto user = getUserById(userId);
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException(String.format("Comment with id=%s was not found", commentId)));
 
-        if (!comment.getUserId().equals(userId)) {
-            throw new IllegalArgumentException(String.format("User with ID: %s is not the author of the comment with ID: %s", userId, commentId));
-        }
+        // Транзакция только на сохранение комментария
+        Comment updatedComment = transactionTemplate.execute(status -> {
+            Comment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new NotFoundException("Comment with id=" + commentId + " не найден"));
 
-        comment.setText(updateCommentDto.getText());
-        comment.setUpdatedOn(LocalDateTime.now());
-        Comment updatedComment = commentRepository.save(comment);
+            if (!comment.getUserId().equals(userId)) {
+                throw new IllegalArgumentException("User is not the author");
+            }
 
-        log.info("Комментарий с ID: {} обновлен", commentId);
+            comment.setText(updateCommentDto.getText());
+            comment.setUpdatedOn(LocalDateTime.now());
+            return commentRepository.save(comment);
+        });
+
         return CommentMapper.toDto(updatedComment, user);
     }
+
 
     @Override
     public List<CommentDto> getCommentsByUserId(Long userId, Pageable pageable) {
@@ -240,6 +244,17 @@ public class CommentServiceImpl implements CommentService {
             log.error("Failed to get users from user-service: {}", e.getMessage());
             // Возвращаем пустую мапу, чтобы не падать полностью
             return new HashMap<>();
+        }
+    }
+
+    private EventDto getEventById(Long eventId) {
+        try {
+            EventDto event = eventClient.getEventById(eventId);
+            log.debug("Existing Event received from event-service: {}", event);
+            return event;
+        } catch (Exception e) {
+            log.warn("Failed to get event from event-service: {}", e.getMessage());
+            throw new NotFoundException("Событие c eventId " + eventId + " не найдено");
         }
     }
 }
