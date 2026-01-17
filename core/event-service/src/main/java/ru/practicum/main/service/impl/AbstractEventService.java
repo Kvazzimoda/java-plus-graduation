@@ -2,7 +2,6 @@ package ru.practicum.main.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import ru.practicum.core.client.UserClient;
 import ru.practicum.core.dto.UserDto;
 import ru.practicum.core.client.RequestClient;
@@ -15,7 +14,6 @@ import ru.practicum.stats.client.RecommendationsClient;
 import ru.practicum.stats.proto.InteractionsCountRequestProto;
 import ru.practicum.stats.proto.RecommendedEventProto;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +73,7 @@ public abstract class AbstractEventService {
             if (result.isEmpty()) {
                 return 0.0;
             }
-            return result.get(0).getScore();
+            return result.getFirst().getScore();
 
         } catch (Exception e) {
             log.warn("Ошибка при получении рейтинга для события {}: {}", eventId, e.getMessage());

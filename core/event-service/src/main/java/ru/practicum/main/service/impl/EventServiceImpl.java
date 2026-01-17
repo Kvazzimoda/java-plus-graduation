@@ -122,28 +122,33 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
     public EventFullDto updateEventByUser(UserIdAndEventIdDto userIdAndEventIdDto, UpdateEventUserRequest updateEventUserRequest) {
         Long userId = userIdAndEventIdDto.getUserId();
         Long eventId = userIdAndEventIdDto.getEventId();
+
         log.debug("Обновление события {} пользователя {}: {}", eventId, userId, updateEventUserRequest);
 
         UserDto userDto = validateAndGetUser(userId);
-
         Event event = validateEventOfInitiator(eventId, userId);
+
         validateEventCanBeUpdated(event);
         updateEventFields(event, updateEventUserRequest);
+
         if (updateEventUserRequest.getEventDate() != null) {
             validateEventDate(updateEventUserRequest.getEventDate());
             event.setEventDate(updateEventUserRequest.getEventDate());
         }
+
         if (updateEventUserRequest.getStateAction() != null) {
             processStateAction(event, updateEventUserRequest.getStateAction());
         }
         Integer confirmedRequests = getConfirmedRequestsCount(eventId);
         event.setConfirmedRequests(confirmedRequests);
+
         Event updatedEvent = eventRepository.save(event);
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
         result.setRating(getEventRating(eventId));
         log.info("Событие {} пользователя {} успешно обновлено", eventId, userId);
         return result;
     }
+
 
     @Override
     public List<EventShortDto> getPublicEvents(SearchOfEventByPublicDto searchDto, Pageable pageable, HttpServletRequest request) {
@@ -205,10 +210,10 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
         EventFullDto result = EventMapper.toEventFullDto(event, userDto);
         result.setRating(getEventRating(id));
         result.setConfirmedRequests(confirmedRequests);
-
         log.debug("Событие {} найдено", id);
         return result;
     }
+
 
     @Override
     public List<EventFullDto> getAdminEvents(SearchOfEventByAdminDto searchDto, Pageable pageable) {
@@ -265,6 +270,7 @@ public class EventServiceImpl extends AbstractEventService implements EventServi
 
         EventFullDto result = EventMapper.toEventFullDto(updatedEvent, userDto);
         result.setRating(getEventRating(eventId));
+
         result.setConfirmedRequests(confirmedRequests);
 
         log.info("Событие {} успешно обновлено администратором", eventId);

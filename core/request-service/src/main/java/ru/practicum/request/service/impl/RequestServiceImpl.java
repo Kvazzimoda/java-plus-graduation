@@ -4,12 +4,10 @@ import com.google.protobuf.Timestamp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
 import ru.practicum.core.client.EventClient;
 import ru.practicum.core.dto.EventDto;
 import ru.practicum.request.dto.mappers.RequestMapper;
 import ru.practicum.request.dto.response.request.ParticipationRequestDto;
-
 import ru.practicum.request.exception.ConflictException;
 import ru.practicum.request.exception.NotFoundException;
 import ru.practicum.request.exception.OwnershipMismatchException;
@@ -132,6 +130,4 @@ public class RequestServiceImpl implements RequestService {
                         .build())
                 .build();
     }
-
-
 }
