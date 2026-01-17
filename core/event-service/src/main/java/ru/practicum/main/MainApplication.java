@@ -4,12 +4,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.annotation.Import;
-import ru.practicum.stats.client.configuration.ClientConfig;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+        "ru.practicum.main",
+        "ru.practicum.stats"
+})
 @EnableDiscoveryClient
-@Import(ClientConfig.class)
 @EnableFeignClients(basePackages = "ru.practicum.core.client")
 public class MainApplication {
     public static void main(String[] args) {

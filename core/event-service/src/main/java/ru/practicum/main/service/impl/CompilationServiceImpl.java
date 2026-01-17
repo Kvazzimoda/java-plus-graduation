@@ -31,6 +31,7 @@ import static ru.practicum.main.dto.mappers.CompilationMapper.toEntity;
 @Slf4j
 @RequiredArgsConstructor
 public class CompilationServiceImpl implements CompilationService {
+
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
     private final UserClient userClient;

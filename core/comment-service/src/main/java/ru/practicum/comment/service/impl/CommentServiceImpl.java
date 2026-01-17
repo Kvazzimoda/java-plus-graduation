@@ -82,13 +82,14 @@ public class CommentServiceImpl implements CommentService {
         comment.setUserId(userId);
         comment.setEventId(event.getId());
         comment.setCreatedOn(LocalDateTime.now());
-        comment.setUpdatedOn(LocalDateTime.now()); // Установим initial timestamp
+        comment.setUpdatedOn(LocalDateTime.now());
 
         Comment savedComment = commentRepository.save(comment);
         log.info("Добавлен новый комментарий: {}", savedComment);
 
         return CommentMapper.toDto(savedComment, user);
     }
+
 
     @Override
     @Transactional
@@ -105,6 +106,7 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.delete(comment);
         log.info("Комментарий с ID: {} удален", commentId);
     }
+
 
     @Override
     @Transactional
@@ -125,6 +127,7 @@ public class CommentServiceImpl implements CommentService {
         log.info("Комментарий с ID: {} обновлен", commentId);
         return CommentMapper.toDto(updatedComment, user);
     }
+
 
     @Override
     public List<CommentDto> getCommentsByUserId(Long userId, Pageable pageable) {
@@ -240,6 +243,17 @@ public class CommentServiceImpl implements CommentService {
             log.error("Failed to get users from user-service: {}", e.getMessage());
             // Возвращаем пустую мапу, чтобы не падать полностью
             return new HashMap<>();
+        }
+    }
+
+    private EventDto getEventById(Long eventId) {
+        try {
+            EventDto event = eventClient.getEventById(eventId);
+            log.debug("Existing Event received from event-service: {}", event);
+            return event;
+        } catch (Exception e) {
+            log.warn("Failed to get event from event-service: {}", e.getMessage());
+            throw new NotFoundException("Событие c eventId " + eventId + " не найдено");
         }
     }
 }
